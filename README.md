@@ -35,7 +35,7 @@ A simple command-line tool to convert PowerPoint (.pptx) files to PDF and merge 
 
 3. Move it to /usr/local/bin to run it from anywhere:
     ```
-    sudo mv pp.py /usr/local/bin/pdf
+    sudo mv pdf.py /usr/local/bin/pdf
     ```
 
 ## Usage/Examples
