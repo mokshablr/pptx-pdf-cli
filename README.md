@@ -5,7 +5,7 @@ A simple command-line tool to convert PowerPoint (.pptx) files to PDF and merge 
 
 ## Features
 
-✅ Convert multiple `.pptx` files to `.pdf` in parallel using LibreOffice (May cause error for increased parallel workers)
+✅ Convert multiple `.pptx` files to `.pdf` in parallel using LibreOffice
 ✅ Merge multiple PDF files into a single PDF  
 ✅ Supports glob patterns for batch processing
 
@@ -45,7 +45,7 @@ A simple command-line tool to convert PowerPoint (.pptx) files to PDF and merge 
     pdf --convert ppt1.pptx ppt2.pptx ./pdfs
     pdf --convert *.pptx ./pdfs
 
-### Convert PPTX to PDF (parallel)
+### Convert PPTX to PDF (parallel, error prone)
 
     pdf --convert --parallel ppt1.pptx ppt2.pptx ./pdfs
     pdf --convert --parallel *.pptx ./pdfs
