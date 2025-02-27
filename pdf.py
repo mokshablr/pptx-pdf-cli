@@ -71,17 +71,43 @@ def convert_pptx_to_pdf(input_files, output_dir, parallel=False):
             futures = [executor.submit(convert_single, file, output_dir) for file in valid_files]
             # Wait for all futures to complete.
             for future in concurrent.futures.as_completed(futures):
-                future.result()  # This will also re-raise any exceptions caught in the worker.
+                future.result()  # Re-raises any exceptions caught in the worker.
     else:
         # Sequential processing.
         for file in valid_files:
             convert_single(file, output_dir)
+
+def interactive_merge_order(valid_files):
+    """
+    Presents the list of files to the user and asks for the desired merge order.
+    The user can enter a comma-separated list of numbers corresponding to the file order.
+    If the input is empty or invalid, the default order is used.
+    """
+    print("Files available for merging:")
+    for i, file in enumerate(valid_files, 1):
+        print(f"  {i}: {file}")
+    order_input = input("Enter the numbers in desired order separated by commas (or press Enter to use the default order): ").strip()
+    if not order_input:
+        print("Using default order.")
+        return valid_files
+    try:
+        # Convert input numbers (1-indexed) to a list of indices (0-indexed)
+        indices = [int(x.strip()) - 1 for x in order_input.split(',')]
+        if any(idx < 0 or idx >= len(valid_files) for idx in indices):
+            print("❌ Invalid indices entered. Using default order.")
+            return valid_files
+        ordered_files = [valid_files[idx] for idx in indices]
+        return ordered_files
+    except ValueError:
+        print("❌ Invalid input. Using default order.")
+        return valid_files
 
 def merge_pdfs(pdf_patterns, output_file):
     """
     Merges multiple PDFs into one.
     Accepts explicit filenames or glob patterns.
     Only files with a .pdf extension are processed.
+    Provides an interactive interface to select the merge order.
     """
     pdf_files = []
     for item in pdf_patterns:
@@ -102,13 +128,23 @@ def merge_pdfs(pdf_patterns, output_file):
         print("❌ Error: You need at least two valid PDF files to merge.")
         sys.exit(1)
 
-    print("PDF files to merge:", valid_files)
+    print("PDF files found:")
+    print(valid_files)
+    
+    # Ask the user for the desired order interactively.
+    ordered_files = interactive_merge_order(valid_files)
+    print("Merging files in the following order:")
+    for file in ordered_files:
+        print(f"  {file}")
     
     if not output_file.lower().endswith('.pdf'):
         print("❌ Warning: Output file does not have a .pdf extension.")
 
+    # Start the timer after interactive order is set.
+    merge_start_time = time.time()
+    
     merger = PdfMerger()
-    for pdf in valid_files:
+    for pdf in ordered_files:
         if not os.path.exists(pdf):
             print(f"❌ Error: File '{pdf}' does not exist. Skipping.")
             continue
@@ -117,7 +153,10 @@ def merge_pdfs(pdf_patterns, output_file):
     try:
         merger.write(output_file)
         merger.close()
+        merge_end_time = time.time()
+        merge_elapsed = merge_end_time - merge_start_time
         print(f"✅ PDFs merged successfully! Output: {output_file}")
+        print(f"Total merge time: {merge_elapsed:.2f} seconds")
     except Exception as e:
         print(f"❌ Error during merging: {e}")
         sys.exit(1)
@@ -149,16 +188,12 @@ if __name__ == "__main__":
             convert_pptx_to_pdf(input_args, output_directory, parallel=parallel_mode)
         end_time = time.time()
         elapsed_time = end_time - start_time
-        print(f"Total time taken: {elapsed_time:.2f} seconds")
+        print(f"Total conversion time: {elapsed_time:.2f} seconds")
 
     elif action == "--merge":
-        start_time = time.time()
         output_pdf = sys.argv[2]
         input_pdfs = sys.argv[3:]
         merge_pdfs(input_pdfs, output_pdf)
-        end_time = time.time()
-        elapsed_time = end_time - start_time
-        print(f"Total time taken: {elapsed_time:.2f} seconds")
 
     else:
         print("❌ Error: Unknown action. Use '--convert' or '--merge'.")
