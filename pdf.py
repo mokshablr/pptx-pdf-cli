@@ -116,22 +116,32 @@ def interactive_merge_order(valid_files):
     """
     Presents the list of files to the user and asks for the desired merge order.
     The user can enter a comma-separated list of numbers and/or ranges (e.g. "1,3,5-7").
+    After displaying the selected order, the user is asked to confirm.
     If the input is empty or invalid, the default order is used.
     """
-    print("Files available for merging:")
-    for i, file in enumerate(valid_files, 1):
-        print(f"  {i}: {file}")
-    order_input = input("Enter the numbers in desired order (use '-' or ':' for ranges, e.g. '1,3,5-7') or press Enter for default order: ").strip()
-    if not order_input:
-        print("Using default order.")
-        return valid_files
-    try:
-        indices = parse_range_input(order_input, len(valid_files))
-        ordered_files = [valid_files[idx] for idx in indices]
-        return ordered_files
-    except ValueError as ve:
-        print(f"❌ {ve}. Using default order.")
-        return valid_files
+    while True:
+        print("Files available for merging:")
+        for i, file in enumerate(valid_files, 1):
+            print(f"  {i}: {file}")
+        order_input = input("Enter the numbers in desired order (use '-' or ':' for ranges, e.g. '1,3,5-7') or press Enter for default order: ").strip()
+        if not order_input:
+            ordered_files = valid_files
+        else:
+            try:
+                indices = parse_range_input(order_input, len(valid_files))
+                ordered_files = [valid_files[idx] for idx in indices]
+            except ValueError as ve:
+                print(f"❌ {ve}. Using default order.")
+                ordered_files = valid_files
+
+        print("The following order will be used for merging:")
+        for file in ordered_files:
+            print(f"  {file}")
+        confirm = input("Is this order correct? [Y/n]: ").strip().lower()
+        if confirm == "" or confirm.startswith("y"):
+            return ordered_files
+        else:
+            print("Let's try again.\n")
 
 def merge_pdfs(pdf_patterns, output_file):
     """
@@ -162,7 +172,7 @@ def merge_pdfs(pdf_patterns, output_file):
     print("PDF files found:")
     print(valid_files)
     
-    # Ask the user for the desired order interactively.
+    # Ask the user for the desired order interactively and confirm it.
     ordered_files = interactive_merge_order(valid_files)
     print("Merging files in the following order:")
     for file in ordered_files:
