@@ -77,29 +77,60 @@ def convert_pptx_to_pdf(input_files, output_dir, parallel=False):
         for file in valid_files:
             convert_single(file, output_dir)
 
+def parse_range_input(input_str, max_len):
+    """
+    Parses a comma-separated input string that may contain individual numbers or ranges.
+    Ranges can be specified with a hyphen (-) or colon (:), e.g. "1-4" or "1:4".
+    Returns a list of 0-indexed positions.
+    """
+    indices = []
+    tokens = input_str.split(',')
+    for token in tokens:
+        token = token.strip()
+        if '-' in token or ':' in token:
+            delim = '-' if '-' in token else ':'
+            parts = token.split(delim)
+            if len(parts) != 2:
+                raise ValueError("Invalid range token: " + token)
+            try:
+                start = int(parts[0])
+                end = int(parts[1])
+            except ValueError:
+                raise ValueError("Non-integer range bounds in: " + token)
+            if start > end:
+                raise ValueError("Range start must not be greater than end in: " + token)
+            # Add all numbers in the range (inclusive)
+            for i in range(start, end + 1):
+                indices.append(i - 1)  # Convert to 0-indexed
+        else:
+            try:
+                indices.append(int(token) - 1)
+            except ValueError:
+                raise ValueError("Invalid token, not an integer: " + token)
+    # Validate indices.
+    if any(idx < 0 or idx >= max_len for idx in indices):
+        raise ValueError("One or more indices are out of valid range.")
+    return indices
+
 def interactive_merge_order(valid_files):
     """
     Presents the list of files to the user and asks for the desired merge order.
-    The user can enter a comma-separated list of numbers corresponding to the file order.
+    The user can enter a comma-separated list of numbers and/or ranges (e.g. "1,3,5-7").
     If the input is empty or invalid, the default order is used.
     """
     print("Files available for merging:")
     for i, file in enumerate(valid_files, 1):
         print(f"  {i}: {file}")
-    order_input = input("Enter the numbers in desired order separated by commas (or press Enter to use the default order): ").strip()
+    order_input = input("Enter the numbers in desired order (use '-' or ':' for ranges, e.g. '1,3,5-7') or press Enter for default order: ").strip()
     if not order_input:
         print("Using default order.")
         return valid_files
     try:
-        # Convert input numbers (1-indexed) to a list of indices (0-indexed)
-        indices = [int(x.strip()) - 1 for x in order_input.split(',')]
-        if any(idx < 0 or idx >= len(valid_files) for idx in indices):
-            print("❌ Invalid indices entered. Using default order.")
-            return valid_files
+        indices = parse_range_input(order_input, len(valid_files))
         ordered_files = [valid_files[idx] for idx in indices]
         return ordered_files
-    except ValueError:
-        print("❌ Invalid input. Using default order.")
+    except ValueError as ve:
+        print(f"❌ {ve}. Using default order.")
         return valid_files
 
 def merge_pdfs(pdf_patterns, output_file):
@@ -140,7 +171,7 @@ def merge_pdfs(pdf_patterns, output_file):
     if not output_file.lower().endswith('.pdf'):
         print("❌ Warning: Output file does not have a .pdf extension.")
 
-    # Start the timer after interactive order is set.
+    # Start the timer after the interactive order is set.
     merge_start_time = time.time()
     
     merger = PdfMerger()
